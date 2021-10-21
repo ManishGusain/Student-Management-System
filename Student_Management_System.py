@@ -1,7 +1,9 @@
 from tkinter import *
 from tkinter import ttk
-import mysql.connector
 from tkinter import messagebox
+from tkinter import filedialog
+import mysql.connector
+import xlrd
 
 mydb = mysql.connector.connect(host="localhost", user="root", passwd="root")
 mycursor = mydb.cursor()
@@ -13,7 +15,7 @@ class Students:
     def __init__(self, root):
         self.root = root
         self.root.title("Student Management System")
-        self.root.geometry("1350x700+0+0")
+        self.root.geometry("1350x700+0+0")  #+0+0 mean window will initially start in position x=0.y=0
         color = "#210070"
         text_color="WHITE"
 
@@ -34,7 +36,7 @@ class Students:
 
 #=================MANAGE FRAME
         self.Manage_Frame = Frame(self.root, bd=4, relief=RIDGE, bg=color)
-        self.Manage_Frame.place(x=20,y=100,width=450,height=600)
+        self.Manage_Frame.place(x=20,y=100,width=470,height=600)
 
         m_title = Label(self.Manage_Frame, text="Manage Students", bd=10, font=("times new roman", 30, "bold"), bg=color, fg=text_color)
         m_title.grid(row=0,columnspan=2,pady=0)
@@ -90,12 +92,13 @@ class Students:
 
 #=================BUTTON FRAME
         self.btn_Frame = Frame(self.Manage_Frame, bd=4, relief=RIDGE, bg=color)
-        self.btn_Frame.place(x=18,y=540,width=420)
+        self.btn_Frame.place(x=18,y=540,width=440)
 
-        add_btn = Button(self.btn_Frame, text="ADD", width=10, command=self.add_students).grid(row=0, column=0, padx=10, pady=5)
-        update_btn = Button(self.btn_Frame, text="UPDATE", width=10, command=self.update_data).grid(row=0, column=1, padx=10, pady=5)
-        delete_btn = Button(self.btn_Frame, text="DELETE", width=10, command=self.delete_data).grid(row=0, column=2, padx=10, pady=5)
-        clear_btn = Button(self.btn_Frame, text="CLEAR", width=10, command=self.clear_data).grid(row=0, column=3, padx=10, pady=5)
+        add_btn = Button(self.btn_Frame, text="ADD", width=8, command=self.add_students).grid(row=0, column=0, padx=10, pady=5)
+        update_btn = Button(self.btn_Frame, text="UPDATE", width=8, command=self.update_data).grid(row=0, column=1, padx=10, pady=5)
+        delete_btn = Button(self.btn_Frame, text="DELETE", width=8, command=self.delete_data).grid(row=0, column=2, padx=10, pady=5)
+        clear_btn = Button(self.btn_Frame, text="CLEAR", width=8, command=self.clear_data).grid(row=0, column=3, padx=10, pady=5)
+        imprt_data = Button(self.btn_Frame, text="Import Data", width=9, command=self.imprt_data).grid(row=0, column=4, padx=10, pady=5)
 
 #==================ON OFF BUTTON FRAME
         on_off_btn_Frame = Frame(self.root, bd=4, relief=RIDGE, bg='red')
@@ -125,6 +128,7 @@ class Students:
         Table_Frame = Frame(self.Detail_Frame, bd=4, relief=RIDGE, bg="black")
         Table_Frame.place(x=10,y=70, width=760, height=500)
 
+################## Treeview to display data in row and column format
         scrollx = Scrollbar(Table_Frame, orient=HORIZONTAL)
         scrolly = Scrollbar(Table_Frame, orient=VERTICAL)
         self.Student_table = ttk.Treeview(Table_Frame, columns=("Roll", "Name", "Course", "Email", "Gender", "Contact", "dob", "Address"), xscrollcommand=scrollx.set, yscrollcommand=scrolly.set)
@@ -133,6 +137,7 @@ class Students:
         self.Student_table.pack(fill=BOTH, expand=1)
         scrollx.config(command=self.Student_table.xview)
         scrolly.config(command=self.Student_table.yview)
+
         self.Student_table.heading("Roll", text="Roll No.")
         self.Student_table.heading("Name", text="Name")
         self.Student_table.heading("Course", text="Course")
@@ -198,7 +203,7 @@ class Students:
         self.txt_address.delete("1.0", END)
 
     def get_cursor(self, ev):
-        contents = self.Student_table.item(self.Student_table.focus())      #.focus highlight the row/data and .item returns the highlighted row/data
+        contents = self.Student_table.item(self.Student_table.focus())
         row = contents['values']
         self.Roll_no_var.set(row[0])
         self.name_var.set(row[1])
@@ -250,7 +255,33 @@ class Students:
         self.Manage_Frame.place(x=5000, y=100, width=760, height=500)
         self.Detail_Frame.place(x=5000, y=100, width=800, height=600)
 
+    def imprt_data(self):
+        #Upload File Format should .xls only. Otherwise it will not work.
+        #Check the file in the given link to see how the data in .xls file should be formatted. Link : (https://docs.google.com/spreadsheets/d/1dQal4ogtDcTNJFZHGkcZ39vzWaUHnrsX/edit?usp=sharing&ouid=106352698814778754048&rtpof=true&sd=true)
+        messagebox.showinfo("Important", "File Format should be .xls only")
+        filename = filedialog.askopenfilename(initialdir="/", title="Select a File", filetypes=(("xls", "*.xls"), ("all files", "*.*")))
+
+        wb = xlrd.open_workbook(filename)
+        sheet = wb.sheet_by_index(0)
+        data = list()
+
+        for i in range(1, sheet.nrows):
+            data.append(tuple(sheet.row_values(i)))
+
+        try:
+            query = "INSERT INTO STU (ROLL_NO, NAME, COURSE, EMAIL, GENDER, CONTACT, DOB, ADDRESS) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+            mycursor.executemany(query, data)
+            mydb.commit()
+            self.fetch_data()
+            self.clear_data()
+            messagebox.showinfo("Success", "Records has been added.")
+
+        except Exception as e:
+            print(e)
+            messagebox.showerror("Invalid Entry", "Either Roll_no already exist or invalid input." + str(e))
+
 
 root = Tk()
 st = Students(root)
 root.mainloop()
+
